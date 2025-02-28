@@ -1,128 +1,201 @@
 "use client"
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectListState, setListStateFalse } from '@/redux/listView';
-import ToiletCard from './ToiletCard'; import { RootState } from '@/redux/store';
+import ToiletCard from './ToiletCard';
+import { RootState } from '@/redux/store';
 import { selectToiletFromGoogle, selectToiletFromUser } from '@/redux/toilet/slice';
 import { selectCurrentLocation } from '@/redux/pin/slice';
 import { calculateDistance } from '@/lib/distance';
 import { IFilter, selectFilterState } from '@/redux/filter';
-;
+import { X, MapPin, Navigation } from 'lucide-react';
+import { FixedSizeList as List } from 'react-window';
 
 interface ToiletComponentProps {
-    toilets: Toilet[];
-    onToiletClick: (toilet: Toilet) => void;
+    toilets: ToiletWithDistance[];
+    onToiletClick: (toilet: ToiletWithDistance) => void;
     className: string;
 }
 
+interface ToiletWithDistance extends Toilet {
+    distance: number;
+    vicinity?: string;
+}
+
+interface ToiletItemProps {
+    data: {
+        items: ToiletWithDistance[];
+        onToiletClick: (toilet: ToiletWithDistance) => void;
+    };
+    index: number;
+    style: React.CSSProperties;
+}
+
+const ITEM_HEIGHT = 120; // 每个厕所项的高度
+
+const ToiletItem: React.FC<ToiletItemProps> = ({ data, index, style }) => {
+    const { items, onToiletClick } = data;
+    const item = items[index];
+
+    const formatDistance = (meters: number) => {
+        if (meters >= 1000) {
+            return `${(meters / 1000).toFixed(1)} km`;
+        }
+        return `${Math.round(meters)} m`;
+    };
+
+    if (!item) return null;
+
+    return (
+        <div
+            style={style}
+            className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+            onClick={() => onToiletClick(item)}
+        >
+            <div className="p-4 space-y-2">
+                <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                        <h3 className={`font-medium ${!item.isFromUser ? "text-gray-900" : "text-blue-600"}`}>
+                            {item.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
+                    </div>
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
+                        <Navigation className="w-4 h-4" />
+                        <span>{formatDistance(item.distance * 1000)}</span>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500">
+                    <MapPin className="w-4 h-4" />
+                    <span className="line-clamp-1">{item.vicinity || item.description}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export const ListView: React.FC = () => {
-    // const toilets = dummyToilets;
-    const toiletsFromUser = useAppSelector(selectToiletFromUser)
-    const toiletsFromGoogle = useAppSelector(selectToiletFromGoogle)
-    const toilets = toiletsFromUser.concat(toiletsFromGoogle)
+    const toiletsFromUser = useAppSelector(selectToiletFromUser);
+    const toiletsFromGoogle = useAppSelector(selectToiletFromGoogle);
     const dispatch = useAppDispatch();
     const listState = useAppSelector(selectListState);
     const [selectedToilet, setSelectedToilet] = useState<Toilet | null>(null);
     const mapReduxRef = useAppSelector((state: RootState) => state.map.mapRef);
     const pin = useAppSelector(selectCurrentLocation);
-    const toiletsWithDistance: Toilet[] = toilets.map((item) => {
-        const newToilet: Toilet = {
+    const toiletFilter = useAppSelector(selectFilterState);
+
+    // 使用useMemo缓存计算结果
+    const toiletsWithDistance = useMemo(() => {
+        const allToilets = toiletsFromUser.concat(toiletsFromGoogle);
+        return allToilets.map((item: Toilet): ToiletWithDistance => ({
             ...item,
-            distance: calculateDistance(pin.latitude, pin.longitude, item.location.coordinates[1], item.location.coordinates[0])
-        }
-        return newToilet
-    })
-    toiletsWithDistance.sort((a, b) => a.distance! - b.distance!);
-    const toiletFilter = useAppSelector(selectFilterState)
-    const [filteredToilets, setFilteredToilets] = useState<Toilet[]>([]);
+            distance: calculateDistance(
+                pin.latitude,
+                pin.longitude,
+                item.location.coordinates[1],
+                item.location.coordinates[0]
+            )
+        })).sort((a: ToiletWithDistance, b: ToiletWithDistance) => a.distance - b.distance);
+    }, [toiletsFromUser, toiletsFromGoogle, pin.latitude, pin.longitude]);
 
+    // 使用useMemo缓存过滤结果
+    const filteredToilets = useMemo(() => {
+        return toiletsWithDistance.filter((toilet: ToiletWithDistance) => {
+            if (toilet.isFromUser && toilet.features) {
+                return (
+                    ((toiletFilter.women && (toilet.features.women === "yes" || toilet.features.women === "dontknow") || !toiletFilter.women)) &&
+                    ((toiletFilter.men && (toilet.features.men === "yes" || toilet.features.men === "dontknow")) || !toiletFilter.men) &&
+                    ((toiletFilter.accessible && (toilet.features.accessible === "yes" || toilet.features.accessible === "dontknow")) || !toiletFilter.accessible) &&
+                    ((toiletFilter.children && (toilet.features.children === "yes" || toilet.features.children === "dontknow") || !toiletFilter.children)) &&
+                    ((toiletFilter.free && (toilet.features.free === "yes" || toilet.features.free === "dontknow")) || !toiletFilter.free) &&
+                    ((toiletFilter.genderNeutral && (toilet.features.genderNeutral === "yes" || toilet.features.genderNeutral === "dontknow") || !toiletFilter.genderNeutral))
+                );
+            }
+            return true;
+        });
+    }, [toiletsWithDistance, toiletFilter]);
 
-    function handleClose(): void {
+    const handleClose = () => {
         dispatch(setListStateFalse());
-    }
+    };
 
-    function handleToiletClick(toilet: Toilet): void {
+    const handleToiletClick = (toilet: ToiletWithDistance) => {
         setSelectedToilet(toilet);
-        mapReduxRef?.panTo({ lat: toilet.location.coordinates[1], lng: toilet.location.coordinates[0] })
-    }
-
-    function handleCloseToilet(): void {
-        if (selectedToilet !== null) {
-            setSelectedToilet(null);
-        }
-    }
-
-    useEffect(() => {
-        const applyFilters = (toilets: Toilet[], filter: IFilter) => {
-            return toilets.filter(toilet => {
-                if (toilet.isFromUser && toilet.features) {
-                    return (
-                        ((filter.women && (toilet.features.women === "yes" || toilet.features.women === "dontknow") || !filter.women)) &&
-                        ((filter.men && (toilet.features.men === "yes" || toilet.features.men === "dontknow")) || !filter.men) &&
-                        ((filter.accessible && (toilet.features.accessible === "yes" || toilet.features.accessible === "dontknow")) || !filter.accessible) &&
-                        ((filter.children && (toilet.features.children === "yes" || toilet.features.children === "dontknow") || !filter.children)) &&
-                        ((filter.free && (toilet.features.free === "yes" || toilet.features.free === "dontknow")) || !filter.free) &&
-                        ((filter.genderNeutral && (toilet.features.genderNeutral === "yes" || toilet.features.genderNeutral === "dontknow") || !filter.genderNeutral))
-                        // && (toilet.votesCount >= filter.voteCount) &&
-                        // (filter.keyword.length === 0 || filter.keyword.some(keyword => toilet.keywords.includes(keyword)))
-                    );
-                } else {
-                    return true
-                }
+        if (mapReduxRef) {
+            mapReduxRef.panTo({
+                lat: toilet.location.coordinates[1],
+                lng: toilet.location.coordinates[0]
             });
-        };
+        }
+    };
 
-        const filtered = applyFilters(toiletsWithDistance, toiletFilter);
-        setFilteredToilets(filtered);
-    }, [toiletsFromUser, toiletsFromGoogle, toiletFilter])
+    const handleCloseToilet = () => {
+        setSelectedToilet(null);
+    };
+
+    if (!listState) return null;
+
+    const itemData = {
+        items: filteredToilets,
+        onToiletClick: handleToiletClick,
+    };
 
     return (
         <div>
-            {listState ? (
-                <div>
-                    <div className='hidden md:block'>
-                        <div className='relative w-[400px] bg-white rounded-2xl pt-5 pl-3 flex flex-col border-2'>
-                            <button
-                                onClick={handleClose}
-                                className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-2 rounded-full z-10"
-                            >
-                                ✕
-                            </button>
-                            <ScrollArea className="h-96">
-                                <ToiletComponent toilets={filteredToilets} onToiletClick={handleToiletClick} className='hidden md:block' />
-                            </ScrollArea>
+            {/* Desktop View */}
+            <div className='hidden md:block'>
+                <div className='relative w-[400px] bg-white rounded-xl shadow-lg overflow-hidden'>
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h2 className="font-semibold text-gray-900">Nearby Toilets</h2>
+                            <p className="text-sm text-gray-500">Found {filteredToilets.length} toilets</p>
                         </div>
+                        <button
+                            onClick={handleClose}
+                            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                            <X className="w-5 h-5 text-gray-500" />
+                        </button>
                     </div>
-
-                    <div className='flex md:hidden w-full h-auto bg-white rounded-2xl pt-5 pl-3 flex-col border-2'>
-                        <ScrollArea className="w-full h-[24vh]">
-                            <ToiletComponent toilets={filteredToilets} onToiletClick={handleToiletClick} className='block md:hidden' />
-                        </ScrollArea>
+                    <div className="h-[70vh]">
+                        <List
+                            height={window.innerHeight * 0.7}
+                            itemCount={filteredToilets.length}
+                            itemSize={ITEM_HEIGHT}
+                            width="100%"
+                            itemData={itemData}
+                        >
+                            {ToiletItem}
+                        </List>
                     </div>
                 </div>
-            ) : null}
-            {selectedToilet ? (
-                <ToiletCard toilet={selectedToilet} onClose={handleCloseToilet} />
-            ) : null}
-        </div>
-    );
-};
+            </div>
 
-const ToiletComponent: React.FC<ToiletComponentProps> = ({ toilets, onToiletClick, className }) => {
-    return (
-        <div className={`space-y-4 ${className}`}>
-            {toilets.map((item, index) => (
-                <ul
-                    key={item._id}
-                    className={`p-5 pr-10 ${index !== 0 ? 'border-t border-gray-300' : ''} cursor-pointer hover:bg-gray-200`}
-                    onClick={() => onToiletClick(item)}
-                >
-                    <li className={`font-bold ${!item.isFromUser ? "text-black" : "text-blue-900"}`}>{item.name}</li>
-                    <li className="text-gray-600">{item.description}</li>
-                    <li>Distance: {item.distance && item.distance * 1000} meters</li>
-                </ul>
-            ))}
+            {/* Mobile View */}
+            <div className='block md:hidden'>
+                <div className='bg-white rounded-t-xl shadow-lg overflow-hidden'>
+                    <div className="px-4 py-3 border-b border-gray-100">
+                        <h2 className="font-semibold text-gray-900">Nearby Toilets</h2>
+                        <p className="text-sm text-gray-500">Found {filteredToilets.length} toilets</p>
+                    </div>
+                    <div className="h-[30vh]">
+                        <List
+                            height={window.innerHeight * 0.3}
+                            itemCount={filteredToilets.length}
+                            itemSize={ITEM_HEIGHT}
+                            width="100%"
+                            itemData={itemData}
+                        >
+                            {ToiletItem}
+                        </List>
+                    </div>
+                </div>
+            </div>
+
+            {selectedToilet && (
+                <ToiletCard toilet={selectedToilet} onClose={handleCloseToilet} />
+            )}
         </div>
     );
 };

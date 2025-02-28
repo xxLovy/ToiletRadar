@@ -1,4 +1,4 @@
-export const APIURL = "https://xuu.xxxxuan.xyz/api"
+export const APIURL = "http://127.0.0.1:3030/api"
 
 
 

@@ -31,6 +31,7 @@
     "react-hook-form": "^7.51.5",
     "react-leaflet": "^4.2.1",
     "react-redux": "^9.1.2",
+    "react-window": "^1.8.11",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.23.8"
@@ -41,6 +42,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-leaflet": "^3.0.0",
+    "@types/react-window": "^1.8.8",
     "eslint": "^8",
     "eslint-config-next": "14.2.3",
     "postcss": "^8",

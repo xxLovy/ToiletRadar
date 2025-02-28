@@ -46,30 +46,16 @@ export function MyComponent() {
         };
 
     const [containerStyle, setContainerStyle] = useState({
-        width: '100vw',
-        height: '87vh'
+        width: '100%',
+        height: '100%'
     });
 
     const handleResize = () => {
-        if (window.innerWidth <= 768 && showListView) {
-            setContainerStyle({
-                width: '100vw',
-                height: '60vh'
-            });
-        } else {
-            setContainerStyle({
-                width: '100vw',
-                height: '87vh'
-            });
-        }
+        // Remove the resize handler as we'll use container-based sizing
     };
 
     useEffect(() => {
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Call initially to set the correct size
-        return () => {
-            window.removeEventListener('resize', handleResize);
-        };
+        // Remove the resize event listener as it's no longer needed
     }, []);
 
     const { isLoaded } = useJsApiLoader({
@@ -142,24 +128,35 @@ export function MyComponent() {
     const MarkerUser = '/MarkerUser.svg'
 
     return isLoaded ? (
-        <GoogleMap
-            mapContainerStyle={containerStyle}
-            center={center}
-            zoom={10}
-            onLoad={onLoad}
-            onUnmount={onUnmount}
-        >
-            { /* Child components, such as markers, info windows, etc. */}
-            <>
-                <Marker position={{ lat: pin.latitude, lng: pin.longitude }} />
-                {filteredToilets.map((item: Toilet, index) => (
-                    <Marker position={{ lat: item.location.coordinates[1], lng: item.location.coordinates[0] }} key={index} onClick={() => handleToiletClick(item)} icon={item.isFromUser ? MarkerUser : MarkerGoogle} />
-                ))}
-                {selectedToilet ? (
-                    <ToiletCard toilet={selectedToilet} onClose={handleCloseToilet} />
-                ) : null}
-            </>
-        </GoogleMap>
+        <div className="w-full h-full">
+            <GoogleMap
+                mapContainerStyle={containerStyle}
+                center={center}
+                zoom={10}
+                onLoad={onLoad}
+                onUnmount={onUnmount}
+                options={{
+                    fullscreenControl: false,
+                    streetViewControl: false,
+                }}
+            >
+                { /* Child components, such as markers, info windows, etc. */}
+                <>
+                    <Marker position={{ lat: pin.latitude, lng: pin.longitude }} />
+                    {filteredToilets.map((item: Toilet, index) => (
+                        <Marker
+                            position={{ lat: item.location.coordinates[1], lng: item.location.coordinates[0] }}
+                            key={index}
+                            onClick={() => handleToiletClick(item)}
+                            icon={item.isFromUser ? MarkerUser : MarkerGoogle}
+                        />
+                    ))}
+                    {selectedToilet ? (
+                        <ToiletCard toilet={selectedToilet} onClose={handleCloseToilet} />
+                    ) : null}
+                </>
+            </GoogleMap>
+        </div>
     ) : <></>
 }
 

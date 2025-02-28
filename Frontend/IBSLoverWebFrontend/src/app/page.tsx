@@ -3,7 +3,6 @@ import MobileSideBar from "@/components/leftsidebar/MobileSideBar";
 import Sidebar from "@/components/leftsidebar/Sidebar";
 import ListView from "@/components/ListView";
 import MapView from "@/components/mapview/MapView";
-import PanicFooter from "@/components/PanicFooter";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { selectCurrentLocation } from "@/redux/pin/slice";
 import { fetchToiletFromUser, fetchToiletFromGoogle } from "@/redux/toilet/operations";
@@ -17,29 +16,33 @@ export default function Home() {
     dispatch(fetchToiletFromUser())
     dispatch(fetchToiletFromGoogle({ latitude: pin.latitude, longitude: pin.longitude }))
   }, [])
+
   return (
-    <main className="h-full w-full bg-gray-100 relative">
+    <div className="fixed top-[60px] bottom-[60px] left-0 right-0 overflow-hidden">
+      {/* Map Container */}
+
       <MapView />
 
 
-      <div className="hidden md:block absolute top-0 left-0 z-10">
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block absolute top-4 left-4 z-10">
         <Sidebar />
       </div>
-      <div className="block md:hidden absolute top-0 left-1/2 z-10">
+
+      {/* Mobile Sidebar */}
+      <div className="block md:hidden absolute top-4 left-1/2 -translate-x-1/2 z-10">
         <MobileSideBar />
       </div>
 
-      <div className="absolute top-20 right-10 z-10 hidden md:block">
+      {/* Desktop List View */}
+      <div className="hidden md:block absolute top-4 right-4 z-10">
         <ListView />
       </div>
 
-      <div className="z-10 block md:hidden">
+      {/* Mobile List View */}
+      <div className="block md:hidden absolute bottom-4 left-0 right-0 z-10">
         <ListView />
       </div>
-
-      <div className="block md:hidden w-full mt-auto">
-        <PanicFooter />
-      </div>
-    </main>
+    </div>
   );
 }

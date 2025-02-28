@@ -1,43 +1,34 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import ReduxProvider from "@/redux/ReduxProvider";
 import { Toaster } from "@/components/ui/toaster"
-import MobileNavBar from "@/components/MobileNavbar";
-import PanicFooter from "@/components/PanicFooter";
+import Header from "@/components/layout/Header";
+import MainFooter from "@/components/layout/MainFooter";
 
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata: Metadata = {
+  title: 'IBSLover - Find Your Comfort Zone',
+  description: 'Find and share public toilets near you',
+};
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <html>
-      <body>
+    <html lang="en" className={`${inter.className} h-full`}>
+      <body className="h-full m-0 overflow-hidden bg-gray-50">
         <ReduxProvider>
-          <header className="bg-gray-100 flex items-center h-[60px]">
-            <div className="hidden md:block w-full">
-              <Navbar />
-            </div>
-            <div className="block md:hidden w-full">
-              <MobileNavBar />
-            </div>
-          </header>
-
-          <div>
+          <Header />
+          <main>
             {children}
-          </div>
-          {/* <div className="absolute bottom-0 w-full">
-            <Footer />
-          </div> */}
+          </main>
+          <MainFooter />
         </ReduxProvider>
         <Toaster />
-
       </body>
+    </html>
+  );
+};
 
-    </html >
-  )
-}
-
-
-export default Layout
+export default Layout;
 

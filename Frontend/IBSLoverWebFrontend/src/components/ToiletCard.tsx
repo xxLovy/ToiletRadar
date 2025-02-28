@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import React from 'react';
 import { Button } from './ui/button';
-import FeatureComponent from './FeatureComponent';
+import { X, Navigation } from 'lucide-react';
 
 interface ToiletCardProps {
     toilet: Toilet;
@@ -11,93 +11,114 @@ interface ToiletCardProps {
 
 const ToiletCard: React.FC<ToiletCardProps> = ({ toilet, onClose }) => {
     return (
-        <div className="fixed bottom-0 left-0 w-full bg-white p-5 rounded-t-2xl shadow-lg transition-transform transform translate-y-full animate-slide-up z-50">
-            <div className="relative">
-                <button
-                    onClick={onClose}
-                    className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-2 rounded-full z-10"
-                >
-                    ✕
-                </button>
-                <h2 className="text-2xl font-bold mb-4">{toilet.name}</h2>
-                <div className="mb-2">
-                    <Button>
+        <div className="fixed bottom-0 left-0 w-full bg-white shadow-lg transition-transform transform translate-y-full animate-slide-up z-50">
+            <div className="relative p-4">
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-xl font-semibold">{toilet.name}</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-red-500 hover:bg-red-50 rounded-full p-1"
+                        aria-label="Close"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 mb-6">
+                    <Button className="bg-teal-500 hover:bg-teal-600 text-white" asChild>
                         <a
                             href={`https://www.google.com/maps/dir/?api=1&destination=${toilet.location?.coordinates[1]},${toilet.location?.coordinates[0]}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className=""
+                            className="flex items-center gap-2"
                         >
+                            <Navigation className="w-4 h-4" />
                             Directions
                         </a>
                     </Button>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <h3 className="text-lg font-semibold">Features</h3>
-                        <ul className="list-none">
-                            <FeatureComponent lable='Women' status={toilet.features?.women} Icon='' key={0} />
-                            <FeatureComponent lable='Men' status={toilet.features?.men} Icon='' key={1} />
-                            <FeatureComponent lable='Accessible' status={toilet.features?.accessible} Icon='' key={2} />
-                            <FeatureComponent lable='Gender Neutral' status={toilet.features?.genderNeutral} Icon='' key={3} />
-                            <FeatureComponent lable='Children' status={toilet.features?.children} Icon='' key={4} />
-                            <FeatureComponent lable='Free' status={toilet.features?.free} Icon='' key={5} />
-                        </ul>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold">Fee</h3>
-                        <p>{toilet.features?.fee ? `${toilet.features.fee}p` : 'Free'}</p>
-                        <h3 className="text-lg font-semibold mt-4">Notes</h3>
-                        <p>{toilet.description || 'No additional notes'}</p>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-semibold">Opening Hours</h3>
-                        <ul className="list-none">
-                            <li className='flex justify-between pr-10' key="monday">
-                                <span>Monday </span>
-                                <span>{toilet.openingHours?.monday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="tuesday">
-                                <span>Tuesday </span>
-                                <span>{toilet.openingHours?.tuesday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="wednesday">
-                                <span>Wednesday </span>
-                                <span>{toilet.openingHours?.wednesday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="thursday">
-                                <span>Thursday </span>
-                                <span>{toilet.openingHours?.thursday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="friday">
-                                <span>Friday </span>
-                                <span>{toilet.openingHours?.friday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="saturday">
-                                <span>Saturday </span>
-                                <span>{toilet.openingHours?.saturday || 'Unknown'}</span>
-                            </li>
-                            <li className='flex justify-between pr-10' key="sunday">
-                                <span>Sunday </span>
-                                <span>{toilet.openingHours?.sunday || 'Unknown'}</span>
-                            </li>
-                        </ul>
-
-                        <p className="text-gray-600 mt-2">Hours may vary with national holidays or seasonal changes. If you know these hours to be out of date, please edit this toilet.</p>
-                    </div>
-                </div>
-                <p className="text-gray-700 mt-4">Last verified: {new Date(toilet.lastUpdateTime).toLocaleString()}</p>
-                <p className="text-gray-700">Distance: {toilet.distance && toilet.distance * 1000} meters</p>
-                <div className='flex mt-4'>
-                    {toilet.isFromUser &&
-                        <Button>
-                            <Link href={`/${toilet._id}/editToilet`}>
-                                Edit
+                    {toilet.isFromUser && (
+                        <Button variant="outline" className="border-gray-300 gap-2" asChild>
+                            <Link href={`/${toilet._id}/editToilet`} className="flex items-center">
+                                Edit Info
                             </Link>
                         </Button>
-                    }
+                    )}
+                </div>
+
+                {/* Main Content */}
+                <div className="grid grid-cols-3 gap-8">
+                    {/* Features Column */}
+                    <div>
+                        <h3 className="font-semibold mb-2">Features</h3>
+                        <ul className="space-y-2">
+                            <li className="flex items-center justify-between">
+                                <span>Women</span>
+                                <span>{toilet.features?.women === 'yes' ? '✓' : toilet.features?.women === 'no' ? '✕' : '?'}</span>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span>Men</span>
+                                <span>{toilet.features?.men === 'yes' ? '✓' : toilet.features?.men === 'no' ? '✕' : '?'}</span>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span>Accessible</span>
+                                <span>{toilet.features?.accessible === 'yes' ? '✓' : toilet.features?.accessible === 'no' ? '✕' : '?'}</span>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span>Gender Neutral</span>
+                                <span>{toilet.features?.genderNeutral === 'yes' ? '✓' : toilet.features?.genderNeutral === 'no' ? '✕' : '?'}</span>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span>Children</span>
+                                <span>{toilet.features?.children === 'yes' ? '✓' : toilet.features?.children === 'no' ? '✕' : '?'}</span>
+                            </li>
+                            <li className="flex items-center justify-between">
+                                <span>Free</span>
+                                <span>{toilet.features?.free === 'yes' ? '✓' : toilet.features?.free === 'no' ? '✕' : '?'}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {/* Notes Column */}
+                    <div>
+                        <h3 className="font-semibold mb-2">Notes</h3>
+                        <p className="text-gray-600">{toilet.description || 'No additional notes'}</p>
+                    </div>
+
+                    {/* Opening Hours Column */}
+                    <div>
+                        <h3 className="font-semibold mb-2">Opening Hours</h3>
+                        <ul className="space-y-2">
+                            {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
+                                <li key={day} className="flex justify-between">
+                                    <span className="capitalize">{day}</span>
+                                    <span className="text-gray-600">
+                                        {toilet.openingHours?.[day] || 'Unknown'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="text-xs text-gray-500 mt-4">
+                            Hours may vary with national holidays or seasonal changes. If you know these hours to be out of date, please edit this toilet.
+                        </p>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-2">
+                        <span>Is this information correct?</span>
+                        <button className="px-2 py-1 bg-green-50 text-green-700 rounded">Yes</button>
+                        <span>No?</span>
+                        <Button variant="outline" size="sm" className="h-6 px-2" asChild>
+                            <Link href={`/${toilet._id}/editToilet`}>Edit</Link>
+                        </Button>
+                    </div>
+                    <p className="mt-1">Last verified: {new Date(toilet.lastUpdateTime).toLocaleString()}</p>
                 </div>
             </div>
+
             <style jsx>{`
                 @keyframes slide-up {
                     0% {

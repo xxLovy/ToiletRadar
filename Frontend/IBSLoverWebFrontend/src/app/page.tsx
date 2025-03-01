@@ -19,10 +19,10 @@ export default function Home() {
 
   return (
     <div className="fixed top-[60px] bottom-[60px] left-0 right-0 overflow-hidden">
-      {/* Map Container */}
-
-      <MapView />
-
+      {/* Map Container - Always full width */}
+      <div className="absolute inset-0">
+        <MapView />
+      </div>
 
       {/* Desktop Sidebar */}
       <div className="hidden md:block absolute top-4 left-4 z-10">
@@ -34,8 +34,8 @@ export default function Home() {
         <MobileSideBar />
       </div>
 
-      {/* Desktop List View */}
-      <div className="hidden md:block absolute top-4 right-4 z-10">
+      {/* Desktop List View - Overlay on right */}
+      <div className="hidden md:block absolute top-4 right-4 bottom-4 z-10">
         <ListView />
       </div>
 

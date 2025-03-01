@@ -1,7 +1,8 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Map as LeafletMap } from 'leaflet';
 
 interface MapState {
-    mapRef: google.maps.Map | null;
+    mapRef: LeafletMap | null;
 }
 
 const initialState: MapState = {
@@ -12,7 +13,7 @@ const mapSlice = createSlice({
     name: 'map',
     initialState,
     reducers: {
-        setMapRef(state, action: PayloadAction<google.maps.Map | null>) {
+        setMapRef(state, action: PayloadAction<LeafletMap | null>) {
             state.mapRef = action.payload;
         },
     },

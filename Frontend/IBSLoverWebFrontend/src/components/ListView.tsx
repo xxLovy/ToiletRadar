@@ -11,6 +11,7 @@ import { calculateDistance } from '@/lib/distance';
 import { IFilter, selectFilterState } from '@/redux/filter';
 import { X, MapPin, Navigation } from 'lucide-react';
 import { FixedSizeList as List } from 'react-window';
+import { selectToilet, setSelectedToilet } from '@/redux/selectedToilet';
 
 interface ToiletComponentProps {
     toilets: ToiletWithDistance[];
@@ -37,6 +38,8 @@ const ITEM_HEIGHT = 120; // 每个厕所项的高度
 const ToiletItem: React.FC<ToiletItemProps> = ({ data, index, style }) => {
     const { items, onToiletClick } = data;
     const item = items[index];
+    const selectedToilet = useAppSelector(selectToilet);
+    const isSelected = selectedToilet && selectedToilet._id === item?._id;
 
     const formatDistance = (meters: number) => {
         if (meters >= 1000) {
@@ -50,24 +53,26 @@ const ToiletItem: React.FC<ToiletItemProps> = ({ data, index, style }) => {
     return (
         <div
             style={style}
-            className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+            className={`border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer
+                ${isSelected ? 'bg-green-50 hover:bg-green-100' : ''}`}
             onClick={() => onToiletClick(item)}
         >
             <div className="p-4 space-y-2">
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                        <h3 className={`font-medium ${!item.isFromUser ? "text-gray-900" : "text-blue-600"}`}>
+                        <h3 className={`font-medium ${!item.isFromUser ? "text-gray-900" : "text-blue-600"}
+                            ${isSelected ? 'text-green-600' : ''}`}>
                             {item.name}
                         </h3>
                         <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
                     </div>
                     <div className="flex items-center space-x-1 text-sm text-gray-500">
-                        <Navigation className="w-4 h-4" />
+                        <Navigation className={`w-4 h-4 ${isSelected ? 'text-green-500' : ''}`} />
                         <span>{formatDistance(item.distance * 1000)}</span>
                     </div>
                 </div>
                 <div className="flex items-center space-x-2 text-xs text-gray-500">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className={`w-4 h-4 ${isSelected ? 'text-green-500' : ''}`} />
                     <span className="line-clamp-1">{item.vicinity || item.description}</span>
                 </div>
             </div>
@@ -80,7 +85,7 @@ export const ListView: React.FC = () => {
     const toiletsFromGoogle = useAppSelector(selectToiletFromGoogle);
     const dispatch = useAppDispatch();
     const listState = useAppSelector(selectListState);
-    const [selectedToilet, setSelectedToilet] = useState<Toilet | null>(null);
+    const selectedToilet = useAppSelector(selectToilet);
     const mapReduxRef = useAppSelector((state: RootState) => state.map.mapRef);
     const pin = useAppSelector(selectCurrentLocation);
     const toiletFilter = useAppSelector(selectFilterState);
@@ -116,22 +121,37 @@ export const ListView: React.FC = () => {
         });
     }, [toiletsWithDistance, toiletFilter]);
 
+    // 更新列表标题显示
+    const getListTitle = () => {
+        if (pin.latitude === 0 && pin.longitude === 0) {
+            return "Nearby Toilets";
+        }
+        return "Toilets Near You";
+    };
+
     const handleClose = () => {
         dispatch(setListStateFalse());
     };
 
     const handleToiletClick = (toilet: ToiletWithDistance) => {
-        setSelectedToilet(toilet);
+        dispatch(setSelectedToilet(toilet));
+
         if (mapReduxRef) {
-            mapReduxRef.panTo({
-                lat: toilet.location.coordinates[1],
-                lng: toilet.location.coordinates[0]
-            });
+            // 平滑移动到选中的厕所位置
+            mapReduxRef.flyTo(
+                [toilet.location.coordinates[1], toilet.location.coordinates[0]],
+                17,
+                {
+                    duration: 1.5,
+                    easeLinearity: 0.25
+                }
+            );
         }
     };
 
     const handleCloseToilet = () => {
-        setSelectedToilet(null);
+        // 只清除选中的厕所，不关闭列表视图
+        dispatch(setSelectedToilet(null));
     };
 
     if (!listState) return null;
@@ -144,11 +164,11 @@ export const ListView: React.FC = () => {
     return (
         <div>
             {/* Desktop View */}
-            <div className='hidden md:block'>
-                <div className='relative w-[400px] bg-white rounded-xl shadow-lg overflow-hidden'>
+            <div className='hidden md:block h-full'>
+                <div className='relative w-[400px] bg-white rounded-xl shadow-lg overflow-hidden h-full'>
                     <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                         <div>
-                            <h2 className="font-semibold text-gray-900">Nearby Toilets</h2>
+                            <h2 className="font-semibold text-gray-900">{getListTitle()}</h2>
                             <p className="text-sm text-gray-500">Found {filteredToilets.length} toilets</p>
                         </div>
                         <button
@@ -158,9 +178,9 @@ export const ListView: React.FC = () => {
                             <X className="w-5 h-5 text-gray-500" />
                         </button>
                     </div>
-                    <div className="h-[70vh]">
+                    <div className="h-[calc(100%-60px)]">
                         <List
-                            height={window.innerHeight * 0.7}
+                            height={window.innerHeight - 180}
                             itemCount={filteredToilets.length}
                             itemSize={ITEM_HEIGHT}
                             width="100%"
@@ -176,7 +196,7 @@ export const ListView: React.FC = () => {
             <div className='block md:hidden'>
                 <div className='bg-white rounded-t-xl shadow-lg overflow-hidden'>
                     <div className="px-4 py-3 border-b border-gray-100">
-                        <h2 className="font-semibold text-gray-900">Nearby Toilets</h2>
+                        <h2 className="font-semibold text-gray-900">{getListTitle()}</h2>
                         <p className="text-sm text-gray-500">Found {filteredToilets.length} toilets</p>
                     </div>
                     <div className="h-[30vh]">

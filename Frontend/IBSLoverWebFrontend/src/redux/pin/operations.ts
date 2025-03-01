@@ -18,7 +18,12 @@ const getCurrentLocation = (): Promise<Position> => {
         } else {
             navigator.geolocation.getCurrentPosition(
                 (position: Position) => resolve(position),
-                (error: PositionError) => reject(error)
+                (error: PositionError) => reject(error),
+                {
+                    enableHighAccuracy: true,  // 请求高精度位置
+                    timeout: 10000,            // 10秒超时
+                    maximumAge: 0              // 不使用缓存的位置
+                }
             );
         }
     });
@@ -29,7 +34,6 @@ export const fetchCurrentLocation = createAsyncThunk(
     async (_, thunkAPI) => {
         try {
             const position: Position = await getCurrentLocation();
-            console.log(position)
             const { latitude, longitude } = position.coords;
             return { latitude, longitude };
         } catch (err: any) {

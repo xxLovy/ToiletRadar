@@ -6,9 +6,15 @@ import { useAppDispatch, useAppSelector } from '@/redux/hooks';
 import { selectListState, setListStateReverse } from '@/redux/listView';
 import { setAccessible, setChildren, setFree, setGenderNeutral, setMen, setWomen } from '@/redux/filter';
 import { useRouter } from 'next/navigation';
-import { selectError, selectSuccess } from '@/redux/pin/slice';
+import { selectCurrentLocation, selectError, selectSuccess } from '@/redux/pin/slice';
 import { useToast } from '../ui/use-toast';
 import { Check, RotateCcw, ChevronDown } from 'lucide-react';
+import { RootState } from '@/redux/store';
+import { fetchToiletFromGoogle } from '@/redux/toilet/operations';
+import { calculateDistance } from '@/lib/distance';
+import { setSelectedToilet } from '@/redux/selectedToilet';
+import { selectToiletFromGoogle, selectToiletFromUser } from '@/redux/toilet/slice';
+import { store } from '@/redux/store';
 
 const SidebarItems = () => {
     const dispatch = useAppDispatch();
@@ -25,6 +31,10 @@ const SidebarItems = () => {
     const router = useRouter();
     const success = useAppSelector(selectSuccess)
     const { toast } = useToast();
+    const mapReduxRef = useAppSelector((state: RootState) => state.map.mapRef);
+    const pin = useAppSelector(selectCurrentLocation);
+    const toiletsFromUser = useAppSelector(selectToiletFromUser);
+    const toiletsFromGoogle = useAppSelector(selectToiletFromGoogle);
 
     const handleFilter = () => {
         setFilterState(!filterState);
@@ -62,23 +72,122 @@ const SidebarItems = () => {
     };
 
     const handleFind = () => {
-        dispatch(fetchCurrentLocation());
+        // 直接使用 Redux thunk 中的 getCurrentLocation 函数
+        dispatch(fetchCurrentLocation())
+            .unwrap()
+            .then(async (position) => {
+                console.log('Current position:', position); // 调试日志
+
+                // 成功获取位置后移动地图
+                if (mapReduxRef) {
+                    mapReduxRef.flyTo(
+                        [position.latitude, position.longitude],
+                        17,
+                        {
+                            duration: 1.5,
+                            easeLinearity: 0.25
+                        }
+                    );
+                }
+
+                try {
+                    // 等待获取附近的厕所
+                    await dispatch(fetchToiletFromGoogle({
+                        latitude: position.latitude,
+                        longitude: position.longitude
+                    })).unwrap();
+
+                    // 从 store 获取最新的厕所列表
+                    const state = store.getState();
+                    const allToilets = [...state.toilet.userToilets, ...state.toilet.googleToilets];
+
+                    if (allToilets.length === 0) return;
+
+                    // 找到最近的厕所
+                    let nearestToilet = null;
+                    let minDistance = Infinity;
+
+                    for (const toilet of allToilets) {
+                        // 注意：toilet.location.coordinates 是 [longitude, latitude] 格式
+                        const toiletLat = toilet.location.coordinates[1];
+                        const toiletLon = toilet.location.coordinates[0];
+
+                        console.log('Comparing with toilet:', {  // 调试日志
+                            name: toilet.name,
+                            coordinates: [toiletLat, toiletLon]
+                        });
+
+                        const distance = calculateDistance(
+                            position.latitude,
+                            position.longitude,
+                            toiletLat,
+                            toiletLon
+                        );
+
+                        console.log('Distance:', distance, 'km');  // 调试日志
+
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestToilet = toilet;
+                        }
+                    }
+
+                    // 如果找到最近的厕所，选中它并移动地图到该位置
+                    if (nearestToilet) {
+                        console.log('Selected nearest toilet:', {  // 调试日志
+                            name: nearestToilet.name,
+                            distance: minDistance,
+                            coordinates: nearestToilet.location.coordinates
+                        });
+
+                        dispatch(setSelectedToilet(nearestToilet));
+                        // 不要立即移动到厕所位置，让用户先看到自己的位置
+                        setTimeout(() => {
+                            if (mapReduxRef) {
+                                // 注意：这里需要使用 [latitude, longitude] 格式
+                                mapReduxRef.flyTo(
+                                    [nearestToilet.location.coordinates[1], nearestToilet.location.coordinates[0]],
+                                    17,
+                                    {
+                                        duration: 1.5,
+                                        easeLinearity: 0.25
+                                    }
+                                );
+                            }
+                        }, 2000); // 2秒后移动到最近的厕所
+                    }
+                } catch (error) {
+                    console.error("Error fetching nearby toilets:", error);
+                }
+            })
+            .catch((error) => {
+                console.error("Error getting location:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Cannot get your location",
+                    description: "Please enable location services in your browser.",
+                });
+            });
     };
 
     const handleList = () => {
         dispatch(setListStateReverse());
     };
 
-    const handleClick = (clickType: "Filter" | "Add" | "Find" | "List") => {
-        switch (clickType) {
+    const handleClick = (type: "Filter" | "Add" | "Find" | "List") => {
+        switch (type) {
             case "Filter":
-                return handleFilter();
+                setFilterState(!filterState);
+                break;
             case "Add":
-                return handleAdd();
+                router.push('/addToilet');
+                break;
             case "Find":
-                return handleFind();
+                handleFind();
+                break;
             case "List":
-                return handleList();
+                dispatch(setListStateReverse());
+                break;
         }
     };
 
